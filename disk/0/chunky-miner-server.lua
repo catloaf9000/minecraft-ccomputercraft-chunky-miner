@@ -113,20 +113,15 @@ function ProcessRequests()
     if serverY == nil or chunks == nil or minY == nil or maxY == nil or x == nil or z == nil or y == nil then
         Log("No crucial vars in RAM, loading from file")
         ReadMiningDataFile()
+        y = y - 2 -- when reload, give the next area to mine 
     end
-    print(serverY)
-    print(chunks)
-    print(minY)
-    print(maxY)
-    print(x)
-    print(z)
-    print(y)
     local maxX = (chunks - 1) / 2
     local maxZ = (chunks - 1) / 2
     -- if program was stopped in the middle of loop, it will restore its iterable values
     -- but that procedure is one time only, so there is a flags isLoadedZ/Y to control it
     local isLoadedZ = false
     local isLoadedY = false
+    print("Waiting for turtles' requests...")
     for i_x = x, maxX do
         if not isLoadedZ then
             isLoadedZ = true
@@ -140,9 +135,13 @@ function ProcessRequests()
                 y = maxY
             end
             for i_y = y, minY, -2 do
-                read() -- TODO: REPLACE WITH TURTLE REQUEST
-                print("x = " .. i_x .. " z = " .. i_z .. " y = " .. i_y)
-                WriteMiningDataFile(serverY, chunks, minY, maxY, i_x, i_y, i_z)
+                local _,_,_,_,message,_ = os.pullEvent("modem_message")
+                print("Turtle, id:" .. message .. " requested mining chunck info")
+                local dataToSerialize = {serverY = serverY, x = i_x, z = i_z, y = i_y}
+                Modem.transmit(0, 0, textutils.serialise(dataToSerialize))
+                print("Replying with serverY = " .. serverY .. " x = " .. i_x .. " z = " .. i_z .. " y = " .. i_y)
+                
+                WriteMiningDataFile(serverY, chunks, minY, maxY, i_x, i_z, i_y)
             end
         end
     end
@@ -188,11 +187,11 @@ function WriteMiningDataFile(w_serverY, w_chunks, w_minY, w_maxY, w_x, w_z, w_y)
 end
 
 --- MAIN BODY ---
-Log("Set up modem...")
-local modem = peripheral.wrap("top")
-modem.open(0)
+Log("Set up Modem...")
+Modem = peripheral.wrap("top")
+Modem.open(0)
 Menu()
 ProcessRequests()
-
+Modem.close(0)
 
 --- END MAIN BODY ---
