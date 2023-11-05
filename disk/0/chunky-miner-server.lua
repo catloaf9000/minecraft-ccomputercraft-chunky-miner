@@ -113,7 +113,7 @@ function ProcessRequests()
     if serverY == nil or chunks == nil or minY == nil or maxY == nil or x == nil or z == nil or y == nil then
         Log("No crucial vars in RAM, loading from file")
         ReadMiningDataFile()
-        y = y - 2 -- when reload, give the next area to mine 
+        y = y - 3 -- when reload, give the next area to mine 
     end
     local maxX = (chunks - 1) / 2
     local maxZ = (chunks - 1) / 2
@@ -134,7 +134,7 @@ function ProcessRequests()
             else
                 y = maxY
             end
-            for i_y = y, minY, -2 do
+            for i_y = y, minY, -3 do
                 local _,_,_,_,message,_ = os.pullEvent("modem_message")
                 print("Turtle, id:" .. message .. " requested mining chunck info")
                 local dataToSerialize = {serverY = serverY, x = i_x, z = i_z, y = i_y}
@@ -188,7 +188,7 @@ end
 
 --- MAIN BODY ---
 Log("Set up Modem...")
-Modem = peripheral.wrap("top")
+Modem = peripheral.wrap("back")
 Modem.open(0)
 Menu()
 ProcessRequests()
