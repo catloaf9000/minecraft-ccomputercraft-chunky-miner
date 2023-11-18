@@ -1,6 +1,8 @@
 --- CONFIG ---
 local minFuelLevel = 1500
 local trash = {"cobblestone", "flint", "gravel", "dirt"}
+local depotUnloadTime = 15
+local maxStuckTime = depotUnloadTime * 2 -- should be twise as depotUnloadTime to not trigger when waiting in line to unload 
 --- END CONFIG ---
 
 -- x, z, y - world coords, f - facing angle to south
@@ -108,6 +110,7 @@ function UpdateXZCoords(c_turtle)
 end
 
 function Forward(blocks)
+    local stuckCounter = 0
     for i = 1, blocks do
         local is_success = false
         repeat
@@ -117,16 +120,25 @@ function Forward(blocks)
             else -- turtle doesn't go Forward, trying to solve
                 -- detecting if it's not an other turtle
                 if InspectTurtle(0) then -- there is turtle on a way
-                    os.sleep(1)
+                    stuckCounter = stuckCounter + 1
+                    if stuckCounter >= maxStuckTime then
+                        if UnstuckTurtles("horizontal") then return -- in the process of unstucking, turtle moves forward, so there's no need to continue
+                        else print("Can't unstuck")
+                        end
+                        stuckCounter = 0
+                    end
+                    sleep(1)
                 else -- then it's a block, mine it
                     turtle.dig()
                 end
             end
         until is_success == true -- retries go Forward until success
+        stuckCounter = 0
     end
 end
 
 function Up(blocks)
+    local stuckCounter = 0
     for i = 1, blocks do
         local is_success = false
         repeat
@@ -135,16 +147,25 @@ function Up(blocks)
                 is_success = true
             else -- turtle doesn't go up, trying to solve
                 if InspectTurtle(1) then -- there is turtle on a way
-                    os.sleep(1)
+                    stuckCounter = stuckCounter + 1
+                    if stuckCounter >= maxStuckTime then
+                        if UnstuckTurtles("vertical up") then return -- in the process of unstucking, turtle moves up, so there's no need to continue
+                        else print("Can't unstuck")
+                        end
+                        stuckCounter = 0
+                    end
+                    sleep(1)
                 else -- then it's a block, mine it
                     turtle.digUp()
                 end
             end
         until is_success == true -- retries go up until success
+        stuckCounter = 0
     end
 end
 
 function Down(blocks)
+    local stuckCounter = 0
     for i = 1, blocks do
         local is_success = false
         repeat
@@ -153,12 +174,20 @@ function Down(blocks)
                 is_success = true
             else -- turtle doesn't go down, trying to solve
                 if InspectTurtle(-1) then -- there is turtle on a way
-                    os.sleep(1)
+                    stuckCounter = stuckCounter + 1
+                    if stuckCounter >= maxStuckTime + 4 then
+                        if UnstuckTurtles("vertical down") then return -- in the process of unstucking, turtle moves Down, so there's no need to continue
+                        else print("Can't unstuck")
+                        end
+                        stuckCounter = 0
+                    end
+                    sleep(1)
                 else -- then it's a block, mine it
                     turtle.digDown()
                 end
             end
         until is_success == true -- retries go down until success
+        stuckCounter = 0
     end
 end
 
@@ -214,6 +243,45 @@ function GoTo(newCoords)
     TurnFacing(newCoords.f)
 end
 
+-- prevents turtles from stuckin completely
+-- accepts "horizontal" for horizontal and "vertical down" or "vertical up" for vertical stuck
+function UnstuckTurtles(direction)
+    print("Trying to unstuck " .. direction)
+    if direction == "horizontal" then
+        if turtleCoords.f == 0 or turtleCoords.f == 90 then
+            Up(1)
+            Forward(1)
+            Down(1)
+            return true
+        else
+            Down(1)
+            Forward(1)
+            Up(1)
+            return true
+        end
+    elseif direction == "vertical down" then
+        local tmpFacing = turtleCoords.f
+        TurnFacing(0)
+        Forward(1)
+        Down(1)
+        TurnFacing(180)
+        Forward(1)
+        TurnFacing(tmpFacing)
+        return true
+    elseif direction == "vertical up" then
+        local tmpFacing = turtleCoords.f
+        TurnFacing(180)
+        Forward(1)
+        Up(1)
+        TurnFacing(0)
+        Forward(1)
+        TurnFacing(tmpFacing)
+        return true
+    else
+        return false
+    end
+end
+
 function MineChunk()
     TurnFacing(0)
     TurnLeft()
@@ -264,7 +332,7 @@ end
 
 --- MAIN BODY ---
 while true do
-    print("Chunky miner turtle v.1.0")
+    print("Chunky miner turtle v.1.2")
     while turtle.getFuelLevel() < minFuelLevel do
         print("Low fuel level!")
         print("Min:" .. minFuelLevel .. " Now:" .. turtle.getFuelLevel())
@@ -306,8 +374,6 @@ while true do
         print("targetCoords2.z:", targetCoords2.z)
         print("targetCoords2.y:", targetCoords2.y)
     end
-
-    
     GoTo({x = turtleCoords.x, y = targetCoords1.y - 1, z = turtleCoords.z})
     GoTo(targetCoords1)
     MineChunk()
@@ -325,7 +391,7 @@ while true do
     Refuel()
     TurnLeft()
     Forward(2)
-    sleep(5) -- time to drop items to storage
+    sleep(depotUnloadTime) -- time to drop items to storage
     Up(1)
     TurnFacing(180)
     Forward(4)

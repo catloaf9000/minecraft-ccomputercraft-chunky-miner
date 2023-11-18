@@ -30,7 +30,7 @@ function Menu()
         isMiningDataExists = false
         Log("Not found " .. miningDataPath)
       end
-    print("Chunky miner v.1.0")
+    print("Chunky miner v.1.2")
     while true do
         print("Select option:")
         print("1 - New mining area")
